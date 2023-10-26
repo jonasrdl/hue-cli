@@ -8,20 +8,29 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-  Use: "hue-cli",
-  Run: func(cmd *cobra.Command, args []string) {
-    fmt.Println("LOL")
-  },
+	Use:   "hue-cli",
+	Short: "Control Philips Hue via CLI",
+	Long: `hue-cli is a command-line interface for controlling Philips Hue lights and bridges.
+
+  To use hue-cli, you can run various subcommands to discover, register, list, and control your Hue devices.
+
+  Examples:
+  - Discover Hue Bridge on the local network: hue-cli discover
+  - Register with a Hue Bridge: hue-cli register
+  - List devices connected to the Hue Bridge: hue-cli list`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Usage()
+	},
 }
 
 func Execute() error {
-  viper.SetConfigName("config")
-  viper.AddConfigPath(".")
-  viper.SetConfigType("yaml")
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
+	viper.SetConfigType("yaml")
 
-  if err := viper.ReadInConfig(); err != nil {
-    fmt.Printf("Error reading config file: %v\n", err)
-  }
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("Error reading config file: %v\n", err)
+	}
 
-  return rootCmd.Execute()
+	return rootCmd.Execute()
 }
