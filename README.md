@@ -27,6 +27,10 @@ hue-cli list
 
 **More options such as controlling etc. will follow in the future!**
 
+## Releasing
+I'm currently working on a proper way to release this application.   
+So in the future this app will probably be available on AUR and directly here on GitHub.
+
 ## Discovery Process
 
 `hue-cli` uses mDNS (Multicast DNS) to discover Philips Hue Bridges on the local network. mDNS allows devices to announce and discover services within a local network without relying on a centralized DNS server.
