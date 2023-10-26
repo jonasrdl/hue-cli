@@ -26,3 +26,11 @@ hue-cli list
 ```
 
 **More options such as controlling etc. will follow in the future!**
+
+## Discovery Process
+
+`hue-cli` uses mDNS (Multicast DNS) to discover Philips Hue Bridges on the local network. mDNS allows devices to announce and discover services within a local network without relying on a centralized DNS server.
+
+When you run the `discover` command, `hue-cli` sends mDNS queries to locate Philips Hue Bridges available on your local network. This process is automatic and helps you find and configure your Hue Bridge seamlessly.
+
+If a Hue Bridge is discovered, its IP address is automatically saved in the configuration file, eliminating the need for manual configuration. This simplifies the setup and makes it convenient to control your Hue lights through the CLI.
