@@ -38,13 +38,22 @@ var listCmd = &cobra.Command{
 
 // Device represents the device structure in the new JSON response.
 type Device struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	On   struct {
+	ID    string `json:"id"`
+	IDV1  string `json:"id_v1"`
+	Owner struct {
+		RID   string `json:"rid"`
+		RType string `json:"rtype"`
+	} `json:"owner"`
+	Metadata struct {
+		Name      string `json:"name"`
+		Archetype string `json:"archetype"`
+	} `json:"metadata"`
+	On struct {
 		On bool `json:"on"`
 	} `json:"on"`
 	Dimming struct {
-		Brightness float64 `json:"brightness"`
+		Brightness  float64 `json:"brightness"`
+		MinDimLevel float64 `json:"min_dim_level"`
 	} `json:"dimming"`
 	ColorTemperature struct {
 		Mirek int  `json:"mirek"`
@@ -124,7 +133,7 @@ func listDevices(bridgeIP, applicationKey string) {
 	fmt.Println("Devices connected to the Philips Hue Bridge:")
 	for _, device := range response.Data {
 		fmt.Printf("Device ID: %s\n", device.ID)
-		fmt.Printf("Name: %s\n", device.Name)
+		fmt.Printf("Name: %s\n", device.Metadata.Name) // Extract and print the name field
 		fmt.Printf("State: %s\n", getLightStateString(device))
 		fmt.Println("--------------")
 	}
