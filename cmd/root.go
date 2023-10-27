@@ -19,7 +19,11 @@ var rootCmd = &cobra.Command{
   - Register with a Hue Bridge: hue-cli register
   - List devices connected to the Hue Bridge: hue-cli list`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Usage()
+		err := cmd.Usage()
+		if err != nil {
+			fmt.Println("Failed to show usage:", err)
+			return
+		}
 	},
 }
 

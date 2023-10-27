@@ -1,13 +1,15 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -20,24 +22,81 @@ var listCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check if Hue Bridge IP is in the configuration
 		hueBridgeIP := viper.GetString("hue_bridge_ip")
-		hueUsername := viper.GetString("hue_username")
+		applicationKey := viper.GetString("hue_application_key")
 
-		if hueBridgeIP == "" || hueUsername == "" {
+		if hueBridgeIP == "" || applicationKey == "" {
 			// Hue Bridge IP or username doesn't exist in the configuration, discover and register first
-			log.Println("Hue Bridge IP or username not found in the configuration. Please run the discover and register commands first.")
+			log.Println("Hue Bridge IP or username not found in the config." +
+				" Please run the discover and register commands first.")
 			return
 		}
 
 		// Perform the device listing using the discovered Hue Bridge IP and username
-		listDevices(hueBridgeIP, hueUsername)
+		listDevices(hueBridgeIP, applicationKey)
 	},
 }
 
-// listDevices lists all devices connected to the Philips Hue Bridge.
-func listDevices(bridgeIP, username string) {
-	apiEndpoint := fmt.Sprintf("http://%s/api/%s/lights", bridgeIP, username)
+// Device represents the device structure in the new JSON response.
+type Device struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	On   struct {
+		On bool `json:"on"`
+	} `json:"on"`
+	Dimming struct {
+		Brightness float64 `json:"brightness"`
+	} `json:"dimming"`
+	ColorTemperature struct {
+		Mirek int  `json:"mirek"`
+		Valid bool `json:"mirek_valid"`
+	} `json:"color_temperature"`
+	Color struct {
+		XY struct {
+			X float64 `json:"x"`
+			Y float64 `json:"y"`
+		} `json:"xy"`
+		Gamut struct {
+			Red struct {
+				X float64 `json:"x"`
+				Y float64 `json:"y"`
+			} `json:"red"`
+			Green struct {
+				X float64 `json:"x"`
+				Y float64 `json:"y"`
+			} `json:"green"`
+			Blue struct {
+				X float64 `json:"x"`
+				Y float64 `json:"y"`
+			} `json:"blue"`
+		} `json:"gamut"`
+		GamutType string `json:"gamut_type"`
+	} `json:"color"`
+}
 
-	resp, err := http.Get(apiEndpoint)
+// Response represents the structure of the new JSON response.
+type Response struct {
+	Errors []interface{} `json:"errors"`
+	Data   []Device      `json:"data"`
+}
+
+// listDevices lists all devices connected to the Philips Hue Bridge.
+func listDevices(bridgeIP, applicationKey string) {
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	apiEndpoint := fmt.Sprintf("https://%s/clip/v2/resource/light", bridgeIP)
+
+	req, err := http.NewRequest("GET", apiEndpoint, nil)
+	if err != nil {
+		log.Printf("Error creating HTTP request: %v\n", err)
+		return
+	}
+	req.Header.Add("hue-application-key", applicationKey)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Error listing devices: %v\n", err)
 		return
@@ -55,37 +114,27 @@ func listDevices(bridgeIP, username string) {
 		return
 	}
 
-	var lights map[string]struct {
-		State struct {
-			On         bool
-			Brightness int
-			XY         []float64
-		} `json:"state"`
-		Name string `json:"name"`
-	}
-	err = json.Unmarshal(body, &lights)
+	var response Response
+	err = json.Unmarshal(body, &response)
 	if err != nil {
 		log.Printf("Error parsing JSON response: %v\n", err)
 		return
 	}
 
 	fmt.Println("Devices connected to the Philips Hue Bridge:")
-	for id, light := range lights {
-		fmt.Printf("Light ID: %s\n", id)
-		fmt.Printf("Name: %s\n", light.Name)
-		fmt.Printf("State: %s\n", getLightStateString(light.State))
+	for _, device := range response.Data {
+		fmt.Printf("Device ID: %s\n", device.ID)
+		fmt.Printf("Name: %s\n", device.Name)
+		fmt.Printf("State: %s\n", getLightStateString(device))
 		fmt.Println("--------------")
 	}
 }
 
 // getLightStateString formats the light state as a string.
-func getLightStateString(state struct {
-	On         bool
-	Brightness int
-	XY         []float64
-}) string {
-	if state.On {
-		return fmt.Sprintf("On (Brightness: %d, XY: %v)", state.Brightness, state.XY)
+func getLightStateString(device Device) string {
+	if device.On.On {
+		return fmt.Sprintf("On (Brightness: %.2f, XY: (%.4f, %.4f))",
+			device.Dimming.Brightness, device.Color.XY.X, device.Color.XY.Y)
 	}
 	return "Off"
 }

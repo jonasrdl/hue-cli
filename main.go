@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/jonasrdl/hue-cli/cmd"
 	"os"
+
+	"github.com/jonasrdl/hue-cli/cmd"
 )
 
 func main() {
