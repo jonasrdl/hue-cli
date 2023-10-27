@@ -27,6 +27,16 @@ hue-cli list
 
 **More options such as controlling etc. will follow in the future!**
 
+## Config
+The config file is in yaml format. Its created and filled with credentials (and info) automatically.
+It looks like that:
+```yaml
+hue_application_key: <hue_application-key>
+hue_bridge_id: <hue_bridge_id>
+hue_bridge_ip: <hue_bridge_ip>
+hue_client_key: <hue_client_key>
+```
+
 ## Releasing
 I'm currently working on a proper way to release this application.   
 So in the future this app will probably be available on AUR and directly here on GitHub.
