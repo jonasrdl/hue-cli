@@ -36,6 +36,7 @@ hue_bridge_id: <hue_bridge_id>
 hue_bridge_ip: <hue_bridge_ip>
 hue_client_key: <hue_client_key>
 ```
+Basically, you don't need to touch this file. (And you shouldn't)
 
 ## Releasing
 I'm currently working on a proper way to release this application.   
