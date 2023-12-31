@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -12,6 +13,9 @@ import (
 )
 
 func init() {
+	lightsOnCmd.Flags().String("light-id", "", "ID of the light to control")
+	lightsOffCmd.Flags().String("light-id", "", "ID of the light to control")
+
 	lightsCmd.AddCommand(lightsOnCmd)
 	lightsCmd.AddCommand(lightsOffCmd)
 
@@ -24,25 +28,103 @@ var lightsCmd = &cobra.Command{
 }
 
 var lightsOnCmd = &cobra.Command{
-	Use:   "on [lightID]",
+	Use:   "on [lightName]",
 	Short: "Turn on a light",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		lightID := args[0]
-		fmt.Printf("Turning on light ID: %s\n", lightID)
+		lightName := args[0]
+		lightID, _ := cmd.Flags().GetString("light-id")
+
+		if lightID == "" {
+			fmt.Printf("Turning on light by name: %s\n", lightName)
+			id, err := getLightIDByName(lightName)
+			if err != nil {
+				fmt.Printf("Error finding light ID: %v\n", err)
+				return
+			}
+			lightID = id
+		} else {
+			fmt.Printf("Turning on light by ID: %s\n", lightID)
+		}
+
 		setLightState(lightID, true)
 	},
 }
 
 var lightsOffCmd = &cobra.Command{
-	Use:   "off [lightID]",
+	Use:   "off [lightName]",
 	Short: "Turn off a light",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		lightID := args[0]
-		fmt.Printf("Turning off light ID: %s\n", lightID)
+		lightName := args[0]
+		lightID, _ := cmd.Flags().GetString("light-id")
+
+		if lightID == "" {
+			fmt.Printf("Turning off light by name: %s\n", lightName)
+			id, err := getLightIDByName(lightName)
+			if err != nil {
+				fmt.Printf("Error finding light ID: %v\n", err)
+				return
+			}
+			lightID = id
+		} else {
+			fmt.Printf("Turning off light by ID: %s\n", lightID)
+		}
+
 		setLightState(lightID, false)
 	},
+}
+
+func getLightIDByName(name string) (string, error) {
+	hueBridgeIP := viper.GetString("hue_bridge_ip")
+	applicationKey := viper.GetString("hue_application_key")
+
+	if hueBridgeIP == "" || applicationKey == "" {
+		return "", fmt.Errorf("hue bridge IP or username not found in the config")
+	}
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+
+	apiEndpoint := fmt.Sprintf("https://%s/clip/v2/resource/light", hueBridgeIP)
+
+	req, err := http.NewRequest("GET", apiEndpoint, nil)
+	if err != nil {
+		return "", fmt.Errorf("error creating HTTP request: %v", err)
+	}
+	req.Header.Add("hue-application-key", applicationKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("error listing devices: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to list devices. Status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("error reading response body: %v", err)
+	}
+
+	var response Response
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return "", fmt.Errorf("error parsing JSON response: %v", err)
+	}
+
+	for _, device := range response.Data {
+		if device.Metadata.Name == name {
+			return device.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("light with name %s not found", name)
 }
 
 func setLightState(lightID string, on bool) {
